@@ -1,5 +1,4 @@
-# Vamos gerar o arquivo README.md com o conteúdo revisado em Markdown
-content = """# 📅 Timelyfy Platform
+# 📅 Timelyfy Platform
 
 [![Deployed on Vercel](https://img.shields.io/badge/Deployed%20on-Vercel-black?style=for-the-badge&logo=vercel)](https://vercel.com/luiz-faleiros-projects/v0-scheduling-platform)
 
@@ -18,92 +17,93 @@ A versão mais recente está disponível em:
 ## 📌 Requisitos Funcionais
 
 ### Gerenciamento de Serviços
+
 #### RF2.1 – Gerenciar tipos de serviços
 | Campo | Descrição |
 |-------|-----------|
-| Nome | **RF2.1 – Gerenciar tipos de serviços** |
+| Nome | Gerenciar tipos de serviços |
 | Descrição | Permitir ao administrador cadastrar, editar e remover tipos de serviços (ex.: consultas médicas, horários de estética, aulas particulares). |
 | Atores | Administrador |
 | Prioridade | Essencial |
+| Requisitos Não Funcionais | Interface intuitiva e responsiva; compatibilidade com navegadores principais. |
+| Entradas e Pré-condições | Entradas: Nome e descrição do serviço. Pré-condições: Administrador autenticado. |
+| Saídas e Pós-condições | Saídas: Confirmação de cadastro, edição ou remoção. Pós-condições: Serviços atualizados no sistema. |
+| Regra de Negócio | Regra: Não permitir duplicidade de serviços. Justificativa: Evitar confusão para os usuários. Impacto: Serviços duplicados prejudicam o agendamento. |
 
 #### RF2.2 – Listar serviços disponíveis
 | Campo | Descrição |
 |-------|-----------|
-| Nome | **RF2.2 – Listar serviços disponíveis** |
+| Nome | Listar serviços disponíveis |
 | Descrição | Listar todos os serviços disponíveis para que usuários possam visualizar opções antes de realizar agendamentos. |
-| Atores | Clientes, Administrador |
+| Atores | Cliente, Administrador |
 | Prioridade | Essencial |
-
----
+| Requisitos Não Funcionais | Desempenho rápido na listagem; compatibilidade com dispositivos móveis. |
+| Entradas e Pré-condições | Nenhuma entrada necessária. Pré-condições: Serviços cadastrados. |
+| Saídas e Pós-condições | Saídas: Lista de serviços exibida. Pós-condições: Usuário pode selecionar serviço. |
+| Regra de Negócio | Regra: Exibir apenas serviços ativos. Justificativa: Evitar confusão do cliente. Impacto: Serviços inativos não devem ser mostrados. |
 
 ### Agendamento de Compromissos
+
 #### RF3.1 – Visualizar e selecionar horários disponíveis
 | Campo | Descrição |
 |-------|-----------|
-| Nome | **RF3.1 – Visualizar e selecionar horários disponíveis** |
+| Nome | Visualizar e selecionar horários disponíveis |
 | Descrição | Permitir ao cliente visualizar a agenda com horários disponíveis e selecionar o horário desejado para agendamento. |
 | Atores | Cliente |
 | Prioridade | Essencial |
+| Requisitos Não Funcionais | Interface responsiva e tempo de carregamento rápido. |
+| Entradas e Pré-condições | Entradas: Seleção de serviço. Pré-condições: Serviço ativo e horários disponíveis. |
+| Saídas e Pós-condições | Saídas: Horário selecionado. Pós-condições: Compromisso registrado no sistema. |
+| Regra de Negócio | Regra: Bloquear horários já reservados. Justificativa: Evitar conflitos de agendamento. Impacto: Horários sobrepostos prejudicam a operação. |
 
-#### RF3.2 – Envio automático de confirmações
+#### RF3.2 – Envio automático de confirmações de agendamento
 | Campo | Descrição |
 |-------|-----------|
-| Nome | **RF3.2 – Envio automático de confirmações de agendamento** |
+| Nome | Enviar confirmações de agendamento automaticamente |
 | Descrição | Enviar automaticamente e-mails de confirmação para os usuários após o agendamento ser realizado com sucesso. |
 | Atores | Cliente |
 | Prioridade | Essencial |
+| Requisitos Não Funcionais | Sistema de envio de e-mails confiável, com entrega rápida e suporte a notificações. |
+| Entradas e Pré-condições | Entradas: Dados do agendamento (serviço, horário, e-mail do cliente). Pré-condições: Cliente com e-mail válido e agendamento confirmado. |
+| Saídas e Pós-condições | Saídas: E-mail de confirmação enviado. Pós-condições: Cliente recebe confirmação e pode consultá-la. |
+| Regra de Negócio | Regra: Confirmar envio antes de finalizar agendamento. Justificativa: Garantir notificação do cliente. Impacto: Falha no envio gera registro de erro e alerta ao administrador. |
 
 #### RF3.3 – Envio de lembretes automáticos
 | Campo | Descrição |
 |-------|-----------|
-| Nome | **RF3.3 – Envio de lembretes automáticos** |
+| Nome | Envio de lembretes automáticos |
 | Descrição | O sistema deve enviar lembretes automáticos para os clientes sobre compromissos agendados. |
 | Atores | Cliente |
 | Prioridade | Essencial |
+| Requisitos Não Funcionais | Sistema de e-mails eficiente; escalabilidade para grandes volumes de usuários. |
+| Entradas e Pré-condições | Entradas: Dados do agendamento. Pré-condições: Agendamento confirmado. |
+| Saídas e Pós-condições | Saídas: Lembretes enviados. Pós-condições: Cliente informado do compromisso. |
+| Regra de Negócio | Regra: Lembretes devem ser enviados no prazo definido. Justificativa: Reduzir faltas e cancelamentos. Impacto: Atrasos prejudicam a experiência do cliente. |
 
 ---
 
 ## 🛡 Requisitos Não Funcionais
 
-### Desempenho e Escalabilidade
-| Nome | **RNF1.1 – Integração com serviço de e-mails** |
-|------|-----------------------------------------------|
-| Descrição | A integração com o serviço de envio de e-mails (Nodemailer) deve disparar lotes de lembretes rapidamente, evitando atrasos significativos. |
+#### RNF1.1 – Integração com serviço de e-mails
+| Campo | Descrição |
+|-------|-----------|
+| Nome | Integração com serviço de e-mails |
+| Descrição | A integração com o serviço de envio de e-mails (Nodemailer) deve ser capaz de disparar lotes de lembretes em período reduzido, evitando atrasos significativos. |
+| Critério de Aplicação | O sistema deve gerenciar filas de envio e otimizar a comunicação com o servidor de e-mails para garantir desempenho adequado. |
+| Consequências da Violação | Atrasos no envio de lembretes, insatisfação dos clientes e perda de confiabilidade. |
 
-### Segurança e Confiabilidade
-| Nome | **RNF2.1 – Autenticação segura de usuários** |
-|------|---------------------------------------------|
+#### RNF2.1 – Autenticação segura de usuários
+| Campo | Descrição |
+|-------|-----------|
+| Nome | Autenticação segura de usuários |
 | Descrição | A autenticação deve usar protocolos seguros (HTTPS) e armazenamento de senhas com criptografia. |
+| Critério de Aplicação | Implementar login seguro e proteger dados sensíveis. |
+| Consequências da Violação | Possível acesso não autorizado e vazamento de dados. |
 
-### Usabilidade e Acessibilidade
-| Nome | **RNF3.1 – Interface intuitiva e responsiva** |
-|------|----------------------------------------------|
-| Descrição | A interface deve ser intuitiva, responsiva e adaptável a diferentes dispositivos (computadores, tablets, smartphones). |
-| Nome | **RNF3.2 – Clareza de ícones e textos** |
-|------|-----------------------------------------|
-| Descrição | Ícones e textos devem ser claros e adequados ao público-alvo. |
-
-### Manutenibilidade
-| Nome | **RNF4.1 – Arquitetura clara (MVC)** |
-|------|--------------------------------------|
-| Descrição | O código deve ser organizado em uma arquitetura clara (MVC), facilitando manutenção e expansão. |
-
-### Compatibilidade
-| Nome | **RNF5.1 – Compatibilidade com navegadores** |
-|------|----------------------------------------------|
-| Descrição | O sistema deve ser compatível com os principais navegadores (Chrome, Firefox, Edge e Safari). |
-
----
-
-## 🛠️ Tecnologias Utilizadas
-- **Next.js** (Frontend)
-- **Node.js / Express** (Backend)
-- **Tailwind CSS** (Estilização)
-- **Vercel** (Deploy)
-
----
-
-with open("/mnt/data/README.md", "w", encoding="utf-8") as f:
-    f.write(content)
-
-"/mnt/data/README.md"
+#### RNF3.1 – Interface intuitiva e responsiva
+| Campo | Descrição |
+|-------|-----------|
+| Nome | Interface intuitiva e responsiva |
+| Descrição | A interface deve ser intuitiva, responsiva e adaptável a diferentes dispositivos. |
+| Critério de Aplicação | Testes de usabilidade e adaptação em diferentes telas. |
+| Consequências da Violação | Usuários têm dificuldade de navegação, afetando adoção do sistema. |
