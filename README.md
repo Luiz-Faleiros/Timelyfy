@@ -68,17 +68,6 @@ A versão mais recente está disponível em:
 | Saídas e Pós-condições | Saídas: E-mail de confirmação enviado. Pós-condições: Cliente recebe confirmação e pode consultá-la. |
 | Regra de Negócio | Regra: Confirmar envio antes de finalizar agendamento. Justificativa: Garantir notificação do cliente. Impacto: Falha no envio gera registro de erro e alerta ao administrador. |
 
-#### RF3.3 – Envio de lembretes automáticos
-| Campo | Descrição |
-|-------|-----------|
-| Nome | Envio de lembretes automáticos |
-| Descrição | O sistema deve enviar lembretes automáticos para os clientes sobre compromissos agendados. |
-| Atores | Cliente |
-| Prioridade | Essencial |
-| Requisitos Não Funcionais | Sistema de e-mails eficiente; escalabilidade para grandes volumes de usuários. |
-| Entradas e Pré-condições | Entradas: Dados do agendamento. Pré-condições: Agendamento confirmado. |
-| Saídas e Pós-condições | Saídas: Lembretes enviados. Pós-condições: Cliente informado do compromisso. |
-| Regra de Negócio | Regra: Lembretes devem ser enviados no prazo definido. Justificativa: Reduzir faltas e cancelamentos. Impacto: Atrasos prejudicam a experiência do cliente. |
 
 ---
 
