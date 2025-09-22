@@ -45,10 +45,10 @@ export default function AppointmentsPage() {
     const storedAppointments: Appointment[] = JSON.parse(localStorage.getItem("appointments") || "[]")
     const storedServices: Service[] = JSON.parse(localStorage.getItem("services") || "[]")
 
-    // Adicionar status aos agendamentos se não existir
+    // Adicionar status aos agendamentos se não existir (padroniza como 'confirmed')
     const appointmentsWithStatus = storedAppointments.map((apt) => ({
       ...apt,
-      status: apt.status || "pending",
+      status: apt.status || "confirmed",
     }))
 
     setAppointments(appointmentsWithStatus)
@@ -159,8 +159,8 @@ export default function AppointmentsPage() {
         <p className="text-gray-600">Gerencie todos os seus agendamentos</p>
       </div>
 
-      {/* Estatísticas */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+  {/* Estatísticas */}
+  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
@@ -183,17 +183,7 @@ export default function AppointmentsPage() {
             </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Pendentes</p>
-                <p className="text-2xl font-bold text-yellow-600">{stats.pending}</p>
-              </div>
-              <Clock className="h-8 w-8 text-yellow-600" />
-            </div>
-          </CardContent>
-        </Card>
+  {/* Pending card removed because appointments default to confirmed */}
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
@@ -294,24 +284,15 @@ export default function AppointmentsPage() {
                   </div>
 
                   <div className="flex gap-2 ml-4">
-                    {appointment.status === "pending" && (
-                      <>
-                        <Button
-                          size="sm"
-                          onClick={() => updateAppointmentStatus(appointment.id, "confirmed")}
-                          className="bg-green-600 hover:bg-green-700"
-                        >
-                          Confirmar
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => updateAppointmentStatus(appointment.id, "cancelled")}
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                        >
-                          Cancelar
-                        </Button>
-                      </>
+                    {appointment.status !== "cancelled" && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => updateAppointmentStatus(appointment.id, "cancelled")}
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      >
+                        Cancelar
+                      </Button>
                     )}
                     <Button
                       size="sm"

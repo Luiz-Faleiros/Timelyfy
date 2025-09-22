@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -23,6 +23,7 @@ interface Service {
 export default function AdminDashboard() {
   const [services, setServices] = useState<Service[]>([])
   const [isCreating, setIsCreating] = useState(false)
+  const [editingServiceId, setEditingServiceId] = useState<string | null>(null)
   const [newService, setNewService] = useState({
     name: "",
     duration: 30,
@@ -59,6 +60,8 @@ export default function AdminDashboard() {
     }
 
     setServices([...services, service])
+  // salvar no localStorage quando criado
+  localStorage.setItem("services", JSON.stringify([...services, service]))
     setNewService({
       name: "",
       duration: 30,
@@ -76,10 +79,53 @@ export default function AdminDashboard() {
   }
 
   const handleDeleteService = (id: string) => {
-    setServices(services.filter((service) => service.id !== id))
+    const updated = services.filter((service) => service.id !== id)
+    setServices(updated)
+    localStorage.setItem("services", JSON.stringify(updated))
     toast({
       title: "Serviço removido",
       description: "O serviço foi removido com sucesso.",
+    })
+  }
+
+  // Iniciar edição: preencher o formulário e abrir o painel
+  const handleEditService = (id: string) => {
+    const service = services.find((s) => s.id === id)
+    if (!service) return
+    setNewService({
+      name: service.name,
+      duration: service.duration,
+      startTime: service.startTime,
+      endTime: service.endTime,
+      interval: service.interval,
+      workDays: service.workDays,
+    })
+    setEditingServiceId(id)
+    setIsCreating(true)
+  }
+
+  const handleUpdateService = () => {
+    if (!editingServiceId) return
+    if (!newService.name || newService.workDays.length === 0) {
+      toast({
+        title: "Erro",
+        description: "Preencha todos os campos obrigatórios.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    const updated = services.map((s) =>
+      s.id === editingServiceId ? { ...s, id: s.id, ...newService } : s,
+    )
+    setServices(updated)
+    localStorage.setItem("services", JSON.stringify(updated))
+    setEditingServiceId(null)
+    setIsCreating(false)
+
+    toast({
+      title: "Serviço atualizado",
+      description: "O serviço foi atualizado com sucesso.",
     })
   }
 
@@ -100,6 +146,14 @@ export default function AdminDashboard() {
   const getPublicLink = (serviceId: string) => {
     return `${window.location.origin}/booking/${serviceId}`
   }
+
+  // carregar serviços do localStorage ao montar
+  useEffect(() => {
+    const storedServices: Service[] = JSON.parse(localStorage.getItem("services") || "[]")
+    if (storedServices && storedServices.length > 0) {
+      setServices(storedServices)
+    }
+  }, [])
 
   return (
     <div className="p-8">
@@ -258,10 +312,27 @@ export default function AdminDashboard() {
             </div>
 
             <div className="flex gap-3">
-              <Button onClick={handleCreateService} className="bg-blue-600 hover:bg-blue-700">
-                Criar Serviço
+              <Button
+                onClick={editingServiceId ? handleUpdateService : handleCreateService}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                {editingServiceId ? "Atualizar Serviço" : "Criar Serviço"}
               </Button>
-              <Button variant="outline" onClick={() => setIsCreating(false)}>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsCreating(false)
+                  setEditingServiceId(null)
+                  setNewService({
+                    name: "",
+                    duration: 30,
+                    startTime: "09:00",
+                    endTime: "18:00",
+                    interval: 30,
+                    workDays: [],
+                  })
+                }}
+              >
                 Cancelar
               </Button>
             </div>
@@ -311,6 +382,14 @@ export default function AdminDashboard() {
                       >
                         <Eye className="h-4 w-4" />
                         Ver
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleEditService(service.id)}
+                        className="flex items-center gap-1"
+                      >
+                        Editar
                       </Button>
                       <Button
                         variant="outline"

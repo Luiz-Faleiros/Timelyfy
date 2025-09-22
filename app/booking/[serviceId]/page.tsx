@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Calendar } from "@/components/ui/calendar"
 import { useToast } from "@/hooks/use-toast"
-import { CalendarDays, Clock, User, Phone } from "lucide-react"
+import { CalendarDays, Clock, User, Mail } from "lucide-react"
 import { format } from "date-fns"
 import { ptBR } from "date-fns/locale"
 
@@ -27,7 +27,7 @@ interface Appointment {
   date: string
   time: string
   clientName: string
-  clientPhone: string
+  clientEmail: string
 }
 
 interface BookingPageProps {
@@ -41,7 +41,7 @@ export default function BookingPage({ params }: BookingPageProps) {
   const [selectedDate, setSelectedDate] = useState<Date>()
   const [selectedTime, setSelectedTime] = useState<string>("")
   const [clientName, setClientName] = useState("")
-  const [clientPhone, setClientPhone] = useState("")
+  const [clientEmail, setClientEmail] = useState("")
   const [appointments, setAppointments] = useState<Appointment[]>([])
   const [availableTimes, setAvailableTimes] = useState<string[]>([])
   const [isLoading, setIsLoading] = useState(false)
@@ -60,7 +60,25 @@ export default function BookingPage({ params }: BookingPageProps) {
   useEffect(() => {
     // Simular busca do serviço - em produção buscar do banco de dados
     const mockServices: Service[] = JSON.parse(localStorage.getItem("services") || "[]")
-    const foundService = mockServices.find((s) => s.id === params.serviceId)
+    let foundService = mockServices.find((s) => s.id === params.serviceId)
+
+    // Se não encontrou serviço, criar um mock para facilitar testes locais
+    if (!foundService) {
+      // criar um serviço de exemplo com workDays úteis (segunda a sexta)
+      const exampleService: Service = {
+        id: params.serviceId,
+        name: "Corte de Cabelo - Teste",
+        duration: 30,
+        startTime: "09:00",
+        endTime: "17:00",
+        interval: 30,
+        workDays: ["monday", "tuesday", "wednesday", "thursday", "friday"],
+      }
+
+      const updatedServices = [...mockServices, exampleService]
+      localStorage.setItem("services", JSON.stringify(updatedServices))
+      foundService = exampleService
+    }
 
     if (foundService) {
       setService(foundService)
@@ -128,7 +146,7 @@ export default function BookingPage({ params }: BookingPageProps) {
   }
 
   const handleBooking = () => {
-    if (!selectedDate || !selectedTime || !clientName || !clientPhone) {
+  if (!selectedDate || !selectedTime || !clientName || !clientEmail) {
       toast({
         title: "Erro",
         description: "Preencha todos os campos obrigatórios.",
@@ -145,7 +163,7 @@ export default function BookingPage({ params }: BookingPageProps) {
       date: format(selectedDate, "yyyy-MM-dd"),
       time: selectedTime,
       clientName,
-      clientPhone,
+  clientEmail,
     }
 
     const updatedAppointments = [...appointments, newAppointment]
@@ -160,8 +178,8 @@ export default function BookingPage({ params }: BookingPageProps) {
     // Limpar formulário
     setSelectedDate(undefined)
     setSelectedTime("")
-    setClientName("")
-    setClientPhone("")
+  setClientName("")
+  setClientEmail("")
     setIsLoading(false)
   }
 
@@ -278,15 +296,15 @@ export default function BookingPage({ params }: BookingPageProps) {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="clientPhone" className="flex items-center gap-2">
-                      <Phone className="h-4 w-4" />
-                      Telefone *
+                    <Label htmlFor="clientEmail" className="flex items-center gap-2">
+                      <Mail className="h-4 w-4" />
+                      Email *
                     </Label>
                     <Input
-                      id="clientPhone"
-                      placeholder="(11) 99999-9999"
-                      value={clientPhone}
-                      onChange={(e) => setClientPhone(e.target.value)}
+                      id="clientEmail"
+                      placeholder="Digite seu email"
+                      value={clientEmail}
+                      onChange={(e) => setClientEmail(e.target.value)}
                     />
                   </div>
 
