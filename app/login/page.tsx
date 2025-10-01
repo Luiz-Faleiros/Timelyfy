@@ -20,24 +20,41 @@ export default function LoginPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
+    try {
+      const res = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      })
 
-    // Simulação de login - em produção conectar com banco de dados
-    if (email === "admin@exemplo.com" && password === "admin123") {
-      localStorage.setItem("isAdminLoggedIn", "true")
+      const data = await res.json()
+
+      if (!res.ok) {
+        toast({
+          title: 'Erro no login',
+          description: 'Email ou senha incorretos.',
+          variant: 'destructive',
+        })
+        setIsLoading(false)
+        return
+      }
+
       toast({
-        title: "Login realizado com sucesso!",
-        description: "Redirecionando para o dashboard...",
+        title: 'Login realizado com sucesso!',
+        description: 'Redirecionando para o dashboard...',
       })
-      router.push("/admin/dashboard")
-    } else {
+
+      // Server route sets HttpOnly cookie; apenas redirecionamos
+      router.push('/admin/dashboard')
+    } catch (error: any) {
       toast({
-        title: "Erro no login",
-        description: "Email ou senha incorretos.",
-        variant: "destructive",
+        title: 'Erro',
+        description: error?.message || 'Erro ao conectar com o servidor.',
+        variant: 'destructive',
       })
+    } finally {
+      setIsLoading(false)
     }
-
-    setIsLoading(false)
   }
 
   return (
@@ -87,13 +104,6 @@ export default function LoginPage() {
                   {isLoading ? "Entrando..." : "Entrar"}
                 </Button>
               </form>
-              <div className="mt-4 p-3 bg-blue-50 rounded-lg text-sm text-blue-800">
-                <p>
-                  <strong>Credenciais de teste:</strong>
-                </p>
-                <p>Email: admin@exemplo.com</p>
-                <p>Senha: admin123</p>
-              </div>
             </CardContent>
           </Card>
         </div>

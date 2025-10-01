@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
+import { getSchedules } from "@/lib/api"
 import { Calendar, Clock, User, Phone, Trash2, CheckCircle, XCircle } from "lucide-react"
 import { format } from "date-fns"
 import { ptBR } from "date-fns/locale"
@@ -41,19 +42,17 @@ export default function AppointmentsPage() {
   const { toast } = useToast()
 
   useEffect(() => {
-    // Carregar dados do localStorage
-    const storedAppointments: Appointment[] = JSON.parse(localStorage.getItem("appointments") || "[]")
-    const storedServices: Service[] = JSON.parse(localStorage.getItem("services") || "[]")
-
-    // Adicionar status aos agendamentos se não existir (padroniza como 'confirmed')
-    const appointmentsWithStatus = storedAppointments.map((apt) => ({
-      ...apt,
-      status: apt.status || "confirmed",
-    }))
-
-    setAppointments(appointmentsWithStatus)
-    setServices(storedServices)
-    setFilteredAppointments(appointmentsWithStatus)
+    async function loadData() {
+      try {
+        // Busca agendamentos da API
+        const schedulesData = await getSchedules()
+        setAppointments(schedulesData?.data || schedulesData)
+      } catch (err) {
+        console.error('Failed to load schedules', err)
+        setAppointments([])
+      }
+    }
+    loadData()
   }, [])
 
   useEffect(() => {

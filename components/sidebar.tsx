@@ -9,13 +9,21 @@ export function Sidebar() {
   const pathname = usePathname()
   const { toast } = useToast()
 
-  const handleLogout = () => {
-    localStorage.removeItem("isAdminLoggedIn")
-    toast({
-      title: "Logout realizado",
-      description: "Você foi desconectado com sucesso.",
-    })
-    router.push("/")
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/logout', { method: 'POST' })
+      toast({
+        title: "Logout realizado",
+        description: "Você foi desconectado com sucesso.",
+      })
+      router.push("/")
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Erro ao fazer logout.",
+        variant: "destructive",
+      })
+    }
   }
 
   const menuItems = [

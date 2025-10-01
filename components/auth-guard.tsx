@@ -15,20 +15,10 @@ export function AuthGuard({ children }: AuthGuardProps) {
   const router = useRouter()
 
   useEffect(() => {
-    const checkAuth = () => {
-      const isLoggedIn = localStorage.getItem("isAdminLoggedIn") === "true"
-
-      if (!isLoggedIn) {
-        router.push("/")
-        return
-      }
-
-      setIsAuthenticated(true)
-      setIsLoading(false)
-    }
-
-    checkAuth()
-  }, [router])
+    // Middleware handles authentication, so just set authenticated
+    setIsAuthenticated(true)
+    setIsLoading(false)
+  }, [])
 
   if (isLoading) {
     return (

@@ -18,15 +18,20 @@ interface Service {
   endTime: string
   interval: number // em minutos
   workDays: string[]
+  description?: string
+  price?: number
 }
 
 export default function AdminDashboard() {
   const [services, setServices] = useState<Service[]>([])
+  const [loading, setLoading] = useState<boolean>(true)
   const [isCreating, setIsCreating] = useState(false)
   const [editingServiceId, setEditingServiceId] = useState<string | null>(null)
   const [newService, setNewService] = useState({
     name: "",
-    duration: 30,
+  description: "",
+  price: 0,
+  duration: 30,
     startTime: "09:00",
     endTime: "18:00",
     interval: 30,
@@ -44,48 +49,112 @@ export default function AdminDashboard() {
     { id: "sunday", label: "Domingo" },
   ]
 
-  const handleCreateService = () => {
+  const _dayIndexToId = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday']
+
+  const normalizeWorkDays = (raw: any): string[] => {
+    if (!Array.isArray(raw)) return []
+    const ids = _dayIndexToId
+    const normalized = raw
+      .map((r) => String(r).trim().toLowerCase())
+      .map((s) => {
+        // numeric representation (0 = sunday)
+        if (/^\d+$/.test(s)) {
+          const n = Number(s)
+          if (n >= 0 && n <= 6) return ids[n]
+        }
+
+        // already an id like 'monday'
+        if (ids.includes(s)) return s
+
+        // backend might send uppercase english names like 'friday' or 'FRIDAY'
+        const simple = s.replace(/[^a-z]/g, '')
+        if (ids.includes(simple)) return simple
+
+        return s
+      })
+      .filter(Boolean)
+      .filter((v, i, a) => a.indexOf(v) === i)
+
+    return normalized
+  }
+
+  const handleCreateService = async () => {
     if (!newService.name || newService.workDays.length === 0) {
       toast({
-        title: "Erro",
-        description: "Preencha todos os campos obrigatórios.",
-        variant: "destructive",
+        title: 'Erro',
+        description: 'Preencha todos os campos obrigatórios.',
+        variant: 'destructive',
       })
       return
     }
 
-    const service: Service = {
-      id: Date.now().toString(),
-      ...newService,
+    const payload = {
+      name: newService.name,
+      description: newService.description,
+      price: Number(newService.price) || 0,
+      duration: Number(newService.duration) || 0,
+      startTime: newService.startTime,
+      endTime: newService.endTime,
+      interval: Number(newService.interval) || 0,
+      daysOfWeek: newService.workDays.map((d) => d.toUpperCase()),
     }
 
-    setServices([...services, service])
-  // salvar no localStorage quando criado
-  localStorage.setItem("services", JSON.stringify([...services, service]))
-    setNewService({
-      name: "",
-      duration: 30,
-      startTime: "09:00",
-      endTime: "18:00",
-      interval: 30,
-      workDays: [],
-    })
-    setIsCreating(false)
+    try {
+      const res = await fetch('/api/services', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
 
-    toast({
-      title: "Serviço criado!",
-      description: "O serviço foi adicionado com sucesso.",
-    })
+      const data = await res.json()
+
+      if (!res.ok) {
+        throw new Error(data?.error || 'Erro ao criar serviço')
+      }
+
+      const created: Service = {
+        id: data?.data?.id || Date.now().toString(),
+        name: newService.name,
+        duration: newService.duration,
+        startTime: newService.startTime,
+        endTime: newService.endTime,
+        interval: newService.interval,
+        workDays: newService.workDays,
+        description: newService.description,
+        price: newService.price,
+      }
+
+      const updatedList = [...services, created]
+      setServices(updatedList)
+      localStorage.setItem('services', JSON.stringify(updatedList))
+
+      setNewService({ name: '', description: '', price: 0, duration: 30, startTime: '09:00', endTime: '18:00', interval: 30, workDays: [] })
+      setIsCreating(false)
+
+      toast({ title: 'Serviço criado!', description: 'O serviço foi adicionado com sucesso.' })
+    } catch (err: any) {
+      toast({ title: 'Erro', description: err?.message || 'Erro ao criar serviço', variant: 'destructive' })
+    }
   }
 
   const handleDeleteService = (id: string) => {
-    const updated = services.filter((service) => service.id !== id)
-    setServices(updated)
-    localStorage.setItem("services", JSON.stringify(updated))
-    toast({
-      title: "Serviço removido",
-      description: "O serviço foi removido com sucesso.",
-    })
+    ;(async () => {
+      try {
+        const res = await fetch(`/api/services/${id}`, { method: 'DELETE' })
+        const json = await res.json()
+        if (!res.ok) throw new Error(json?.error || 'Erro ao remover serviço')
+
+        const updated = services.filter((service) => service.id !== id)
+        setServices(updated)
+
+        toast({
+          title: 'Serviço removido',
+          description: 'O serviço foi removido com sucesso.',
+        })
+      } catch (err: any) {
+        toast({ title: 'Erro', description: err?.message || 'Erro ao remover serviço', variant: 'destructive' })
+      }
+    })()
   }
 
   // Iniciar edição: preencher o formulário e abrir o painel
@@ -93,12 +162,14 @@ export default function AdminDashboard() {
     const service = services.find((s) => s.id === id)
     if (!service) return
     setNewService({
-      name: service.name,
-      duration: service.duration,
-      startTime: service.startTime,
-      endTime: service.endTime,
-      interval: service.interval,
-      workDays: service.workDays,
+  name: service.name,
+  description: (service as any).description || '',
+  price: (service as any).price || 0,
+  duration: service.duration,
+  startTime: service.startTime,
+  endTime: service.endTime,
+  interval: service.interval,
+  workDays: normalizeWorkDays((service as any).workDays || (service as any).daysOfWeek || []),
     })
     setEditingServiceId(id)
     setIsCreating(true)
@@ -107,26 +178,50 @@ export default function AdminDashboard() {
   const handleUpdateService = () => {
     if (!editingServiceId) return
     if (!newService.name || newService.workDays.length === 0) {
-      toast({
-        title: "Erro",
-        description: "Preencha todos os campos obrigatórios.",
-        variant: "destructive",
-      })
+      toast({ title: 'Erro', description: 'Preencha todos os campos obrigatórios.', variant: 'destructive' })
       return
     }
 
-    const updated = services.map((s) =>
-      s.id === editingServiceId ? { ...s, id: s.id, ...newService } : s,
-    )
-    setServices(updated)
-    localStorage.setItem("services", JSON.stringify(updated))
-    setEditingServiceId(null)
-    setIsCreating(false)
+    ;(async () => {
+      try {
+        const payload = {
+          name: newService.name,
+          description: newService.description,
+          price: Number(newService.price) || 0,
+          duration: Number(newService.duration) || 0,
+          startTime: newService.startTime,
+          endTime: newService.endTime,
+          interval: Number(newService.interval) || 0,
+          daysOfWeek: newService.workDays.map((d) => d.toUpperCase()),
+        }
 
-    toast({
-      title: "Serviço atualizado",
-      description: "O serviço foi atualizado com sucesso.",
-    })
+        const res = await fetch(`/api/services/${editingServiceId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        })
+
+        const json = await res.json()
+        if (!res.ok) throw new Error(json?.error || 'Erro ao atualizar serviço')
+
+        // backend may return updated resource in json.data
+        let updatedService = json?.data?.data || json?.data || { id: editingServiceId, ...newService }
+
+        updatedService = {
+          ...(updatedService as any),
+          workDays: normalizeWorkDays((updatedService as any).workDays || (updatedService as any).daysOfWeek || newService.workDays),
+        }
+
+        const updated = services.map((s) => (s.id === editingServiceId ? { ...s, id: s.id, ...(updatedService as any) } : s))
+        setServices(updated)
+        setEditingServiceId(null)
+        setIsCreating(false)
+
+        toast({ title: 'Serviço atualizado', description: 'O serviço foi atualizado com sucesso.' })
+      } catch (err: any) {
+        toast({ title: 'Erro', description: err?.message || 'Erro ao atualizar serviço', variant: 'destructive' })
+      }
+    })()
   }
 
   const handleWorkDayChange = (dayId: string, checked: boolean) => {
@@ -143,16 +238,55 @@ export default function AdminDashboard() {
     }
   }
 
-  const getPublicLink = (serviceId: string) => {
-    return `${window.location.origin}/booking/${serviceId}`
+  const slugify = (text: string) =>
+    text
+      .toString()
+      .normalize('NFKD')
+      .replace(/\s+/g, '-') // Replace spaces with -
+      .replace(/[^\w\-]+/g, '') // Remove all non-word chars
+      .replace(/--+/g, '-') // Replace multiple - with single -
+      .replace(/^-+/, '') // Trim - from start of text
+      .replace(/-+$/, '') // Trim - from end of text
+      .toLowerCase()
+
+  const getPublicLink = (serviceNameOrId: string) => {
+    // If input looks like an id (no spaces), fallback to id route; otherwise use slugified name
+    const hasSpace = /\s/.test(serviceNameOrId)
+    const slug = hasSpace ? slugify(serviceNameOrId) : slugify(serviceNameOrId)
+    return `${window.location.origin}/booking/${slug}`
   }
 
   // carregar serviços do localStorage ao montar
   useEffect(() => {
-    const storedServices: Service[] = JSON.parse(localStorage.getItem("services") || "[]")
-    if (storedServices && storedServices.length > 0) {
-      setServices(storedServices)
+    async function loadServices() {
+  setLoading(true)
+      try {
+        const res = await fetch('/api/services')
+        const json = await res.json()
+        if (!res.ok) throw new Error(json?.error || 'Erro ao carregar serviços')
+
+        // backend returns { data: [...] } or similar
+        const list: any[] = json?.data?.data || json?.data || []
+        if (Array.isArray(list) && list.length > 0) {
+          const normalized = list.map((s) => ({
+            ...s,
+            workDays: normalizeWorkDays(s.workDays || s.daysOfWeek),
+          }))
+          setServices(normalized as Service[])
+        } else {
+          // ensure services is empty array when none returned
+          setServices([])
+        }
+      } catch (err) {
+        // leave services empty
+        console.error('Failed to load services', err)
+      }
+      finally {
+        setLoading(false)
+      }
     }
+
+    loadServices()
   }, [])
 
   return (
@@ -162,7 +296,16 @@ export default function AdminDashboard() {
         <p className="text-gray-600">Gerencie seus serviços e visualize estatísticas</p>
       </div>
 
-      {services.length > 0 && (
+      {loading ? (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="p-6 bg-white rounded-lg shadow-sm animate-pulse">
+              <div className="h-4 bg-gray-200 rounded w-3/5 mb-4" />
+              <div className="h-8 bg-gray-200 rounded w-1/3" />
+            </div>
+          ))}
+        </div>
+      ) : services.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
           <Card>
             <CardContent className="p-6">
@@ -206,7 +349,7 @@ export default function AdminDashboard() {
             </CardContent>
           </Card>
         </div>
-      )}
+      ) : null}
 
       {/* Botão para criar novo serviço */}
       <div className="mb-8">
@@ -235,6 +378,16 @@ export default function AdminDashboard() {
                 />
               </div>
               <div className="space-y-2">
+                <Label htmlFor="price">Preço (R$)</Label>
+                <Input
+                  id="price"
+                  type="number"
+                  step="0.01"
+                  value={newService.price?.toString?.() || ''}
+                  onChange={(e) => setNewService({ ...newService, price: Number(e.target.value) })}
+                />
+              </div>
+              <div className="space-y-2">
                 <Label htmlFor="duration">Duração (minutos)</Label>
                 <Select
                   value={newService.duration.toString()}
@@ -253,6 +406,18 @@ export default function AdminDashboard() {
                   </SelectContent>
                 </Select>
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="description">Descrição</Label>
+              <textarea
+                id="description"
+                className="w-full p-2 border rounded-md"
+                rows={3}
+                value={newService.description}
+                onChange={(e) => setNewService({ ...newService, description: e.target.value })}
+                placeholder="Descrição do serviço"
+              />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -323,14 +488,16 @@ export default function AdminDashboard() {
                 onClick={() => {
                   setIsCreating(false)
                   setEditingServiceId(null)
-                  setNewService({
-                    name: "",
-                    duration: 30,
-                    startTime: "09:00",
-                    endTime: "18:00",
-                    interval: 30,
-                    workDays: [],
-                  })
+                    setNewService({
+                      name: "",
+                      description: "",
+                      price: 0,
+                      duration: 30,
+                      startTime: "09:00",
+                      endTime: "18:00",
+                      interval: 30,
+                      workDays: [],
+                    })
                 }}
               >
                 Cancelar
@@ -343,7 +510,19 @@ export default function AdminDashboard() {
       {/* Lista de serviços */}
       <div className="space-y-4">
         <h2 className="text-lg font-semibold text-gray-900">Meus Serviços</h2>
-        {services.length === 0 ? (
+        {loading ? (
+          <div className="grid gap-4">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="p-6 bg-white rounded-lg shadow-sm animate-pulse">
+                <div className="h-6 bg-gray-200 rounded w-1/3 mb-3" />
+                <div className="space-y-2">
+                  <div className="h-3 bg-gray-200 rounded w-2/3" />
+                  <div className="h-3 bg-gray-200 rounded w-1/2" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : services.length === 0 ? (
           <Card>
             <CardContent className="py-8 text-center">
               <p className="text-muted-foreground">Nenhum serviço cadastrado ainda.</p>
@@ -365,19 +544,19 @@ export default function AdminDashboard() {
                         </p>
                         <p>Intervalo: {service.interval} minutos</p>
                         <p>
-                          Dias: {service.workDays.map((day) => weekDays.find((d) => d.id === day)?.label).join(", ")}
+                          Dias: {(service.workDays || []).map((day) => weekDays.find((d) => d.id === day)?.label).join(", ")}
                         </p>
                       </div>
                       <div className="mt-3 p-3 bg-blue-50 rounded-lg">
                         <p className="text-sm font-medium text-blue-900">Link público:</p>
-                        <p className="text-sm text-blue-700 break-all">{getPublicLink(service.id)}</p>
+                        <p className="text-sm text-blue-700 break-all">{getPublicLink(service.name)}</p>
                       </div>
                     </div>
                     <div className="flex gap-2 ml-4">
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => window.open(getPublicLink(service.id), "_blank")}
+                        onClick={() => window.open(getPublicLink(service.name), "_blank")}
                         className="flex items-center gap-1"
                       >
                         <Eye className="h-4 w-4" />
