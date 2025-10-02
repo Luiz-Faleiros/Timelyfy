@@ -15,6 +15,23 @@ A versão mais recente está disponível em:
 ---
 
 ## 📌 Requisitos Funcionais
+# 📅 Timelyfy Platform
+
+[![Deployed on Vercel](https://img.shields.io/badge/Deployed%20on-Vercel-black?style=for-the-badge&logo=vercel)](https://vercel.com/luiz-faleiros-projects/v0-scheduling-platform)
+
+## 📝 Visão Geral
+A **Scheduling Platform** é uma aplicação web para gerenciamento de agendamentos, ideal para prestadores de serviço e empresas que desejam oferecer aos clientes uma forma prática de marcar compromissos.  
+O sistema possibilita o gerenciamento de serviços, visualização de horários disponíveis, envio de confirmações e lembretes automáticos por e-mail.
+
+---
+
+## 🚀 Deploy
+A versão mais recente está disponível em:  
+➡️ **[v0-scheduling-platform](https://vercel.com/luiz-faleiros-projects/v0-scheduling-platform)**
+
+---
+
+## 📌 Requisitos Funcionais
 
 ### Gerenciamento de Serviços
 
@@ -96,3 +113,21 @@ A versão mais recente está disponível em:
 | Descrição | A interface deve ser intuitiva, responsiva e adaptável a diferentes dispositivos. |
 | Critério de Aplicação | Testes de usabilidade e adaptação em diferentes telas. |
 | Consequências da Violação | Usuários têm dificuldade de navegação, afetando adoção do sistema. |
+
+
+## Como testar a nova tela de registro
+
+1. Crie um arquivo `.env.local` na raiz com as variáveis:
+
+```
+NEXT_PUBLIC_ADMIN_INVITE_CODE=ADMIN-INVITE-2e42a179ebcb
+ADMIN_INVITE_CODE=ADMIN-INVITE-2e42a179ebcb
+```
+
+2. Rode a aplicação em dev: `pnpm dev` (ou `npm run dev`).
+
+3. Abra `http://localhost:3000/register`. Insira o código de convite (o mesmo do `.env.local`).
+
+4. Preencha o formulário. Ele fará um POST para `/api/auth/register` que valida o `ADMIN_INVITE_CODE` no servidor quando `role=ADMIN`.
+
+Observação: a rota de exemplo não persiste usuários em banco; é um stub que retorna 201 quando o código bater.

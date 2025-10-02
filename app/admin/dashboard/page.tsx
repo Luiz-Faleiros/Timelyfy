@@ -9,6 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox"
 import { useToast } from "@/hooks/use-toast"
 import { Trash2, Plus, Eye, CalendarDays, Clock, User } from "lucide-react"
+import { format } from 'date-fns'
+import { getSchedules } from '@/lib/api'
 
 interface Service {
   id: string
@@ -25,6 +27,8 @@ interface Service {
 export default function AdminDashboard() {
   const [services, setServices] = useState<Service[]>([])
   const [loading, setLoading] = useState<boolean>(true)
+  const [todayCount, setTodayCount] = useState<number>(0)
+  const [totalCount, setTotalCount] = useState<number>(0)
   const [isCreating, setIsCreating] = useState(false)
   const [editingServiceId, setEditingServiceId] = useState<string | null>(null)
   const [newService, setNewService] = useState({
@@ -287,6 +291,29 @@ export default function AdminDashboard() {
     }
 
     loadServices()
+    // also fetch schedule counts
+    ;(async () => {
+      try {
+        const today = format(new Date(), 'yyyy-MM-dd')
+        const todayRes = await getSchedules({ date: today })
+        const todayData = todayRes?.data || todayRes || []
+        const todayAppointments = Array.isArray(todayData)
+          ? todayData.reduce((acc: number, sch: any) => acc + ((sch.appointments && sch.appointments.length) || 0), 0)
+          : 0
+        setTodayCount(todayAppointments)
+
+        const allRes = await getSchedules()
+        const allData = allRes?.data || allRes || []
+        const allAppointments = Array.isArray(allData)
+          ? allData.reduce((acc: number, sch: any) => acc + ((sch.appointments && sch.appointments.length) || 0), 0)
+          : 0
+        setTotalCount(allAppointments)
+      } catch (err) {
+        console.error('Failed to load schedule counts', err)
+        setTodayCount(0)
+        setTotalCount(0)
+      }
+    })()
   }, [])
 
   return (
@@ -323,13 +350,7 @@ export default function AdminDashboard() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Agendamentos Hoje</p>
-                  <p className="text-2xl font-bold">
-                    {
-                      JSON.parse(localStorage.getItem("appointments") || "[]").filter(
-                        (apt: any) => apt.date === new Date().toISOString().split("T")[0],
-                      ).length
-                    }
-                  </p>
+                  <p className="text-2xl font-bold">{todayCount}</p>
                 </div>
                 <Clock className="h-8 w-8 text-green-600" />
               </div>
@@ -340,9 +361,7 @@ export default function AdminDashboard() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Total de Agendamentos</p>
-                  <p className="text-2xl font-bold">
-                    {JSON.parse(localStorage.getItem("appointments") || "[]").length}
-                  </p>
+                  <p className="text-2xl font-bold">{totalCount}</p>
                 </div>
                 <User className="h-8 w-8 text-purple-600" />
               </div>

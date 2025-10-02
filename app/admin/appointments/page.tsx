@@ -8,67 +8,171 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
 import { getSchedules } from "@/lib/api"
-import { Calendar, Clock, User, Phone, Trash2, CheckCircle, XCircle } from "lucide-react"
-import { format } from "date-fns"
+import { Calendar as CalendarIcon, Clock, User, Phone, Trash2, CheckCircle, XCircle, X } from "lucide-react"
+import {
+  AlertDialog,
+  AlertDialogTrigger,
+  AlertDialogContent,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from '@/components/ui/alert-dialog'
+import { Calendar as DatePicker } from '@/components/ui/calendar'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { format } from 'date-fns'
 import { ptBR } from "date-fns/locale"
 
 interface Service {
-  id: string
+  id: number
   name: string
+  description: string
+  price: number
   duration: number
-  startTime: string
-  endTime: string
-  interval: number
-  workDays: string[]
 }
 
 interface Appointment {
-  id: string
-  serviceId: string
+  id: number
+  userId: number
+  scheduleId: number
+  serviceId: number
+  status: string
+  createdAt: string
+  updatedAt: string
+  user?: User
+}
+
+interface User {
+  id: number
+  name: string
+  email?: string | null
+  phone?: string | null
+}
+
+interface Schedule {
+  id: number
+  serviceId: number
   date: string
-  time: string
-  clientName: string
-  clientPhone: string
-  status: "pending" | "confirmed" | "cancelled"
+  startTime: string
+  endTime: string
+  isAvailable: boolean
+  createdAt: string
+  updatedAt: string
+  service: Service
+  appointments: Appointment[]
 }
 
 export default function AppointmentsPage() {
-  const [appointments, setAppointments] = useState<Appointment[]>([])
-  const [services, setServices] = useState<Service[]>([])
-  const [filteredAppointments, setFilteredAppointments] = useState<Appointment[]>([])
+
+  const [schedules, setSchedules] = useState<Schedule[]>([])
+  const [loading, setLoading] = useState<boolean>(true)
+  const [filteredSchedules, setFilteredSchedules] = useState<Schedule[]>([])
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [dateFilter, setDateFilter] = useState<string>("all")
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>()
   const { toast } = useToast()
+  const [cancelingIds, setCancelingIds] = useState<number[]>([])
+
+  const cancelAppointment = async (aptId: number) => {
+    if (cancelingIds.includes(aptId)) return
+    setCancelingIds((s) => [...s, aptId])
+    try {
+      const res = await fetch(`/api/appointments/${aptId}/cancel`, { method: 'PATCH' })
+      const data = await res.json()
+      if (!res.ok) {
+        toast({ title: 'Erro', description: data?.error || 'Falha ao cancelar agendamento', variant: 'destructive' })
+        return
+      }
+
+      // Atualiza estado local marcando o agendamento como cancelado
+      setSchedules((prev) => prev.map((sch) => ({
+        ...sch,
+        appointments: sch.appointments.map((a) => (a.id === aptId ? { ...a, status: 'cancelled' } : a)),
+      })) )
+
+      toast({ title: 'Cancelado', description: 'Agendamento cancelado com sucesso' })
+    } catch (err: any) {
+      toast({ title: 'Erro', description: err?.message || 'Erro interno', variant: 'destructive' })
+    } finally {
+      setCancelingIds((s) => s.filter((id) => id !== aptId))
+    }
+  }
 
   useEffect(() => {
-    async function loadData() {
+    async function loadData(params: Record<string, string> = {}) {
+      setLoading(true)
       try {
-        // Busca agendamentos da API
-        const schedulesData = await getSchedules()
-        setAppointments(schedulesData?.data || schedulesData)
+        // Busca agendamentos da API (pode receber params, ex: { date: 'YYYY-MM-DD' })
+        const schedulesData = await getSchedules(params)
+        setSchedules(schedulesData?.data || schedulesData)
       } catch (err) {
         console.error('Failed to load schedules', err)
-        setAppointments([])
+        setSchedules([])
+      } finally {
+        setLoading(false)
       }
     }
+
+    // Carrega sem filtro de data inicialmente
     loadData()
   }, [])
 
+  // Quando dateFilter mudar, refetch da API passando a data (YYYY-MM-DD)
   useEffect(() => {
-    let filtered = appointments
+    if (dateFilter === 'all') {
+      // buscar tudo
+      getSchedules().then((d) => setSchedules(d?.data || d)).catch(() => setSchedules([]))
+      return
+    }
 
-    // Filtrar por termo de busca
+    // mapear os tokens like 'today', 'upcoming', 'past' para uma data concreta
+    if (dateFilter === 'today') {
+      const today = new Date()
+      const dateStr = format(today, 'yyyy-MM-dd')
+      getSchedules({ date: dateStr }).then((d) => setSchedules(d?.data || d)).catch(() => setSchedules([]))
+      return
+    }
+
+    // para 'upcoming' e 'past' não temos um endpoint direto por range; deixar a UI filtrar o que a API retorna sem params
+    if (dateFilter === 'upcoming' || dateFilter === 'past') {
+      // Reuse full fetch and rely on client-side filter already implemented
+      getSchedules().then((d) => setSchedules(d?.data || d)).catch(() => setSchedules([]))
+      return
+    }
+
+    // Se dateFilter for uma data específica no formato YYYY-MM-DD
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateFilter)) {
+      getSchedules({ date: dateFilter }).then((d) => setSchedules(d?.data || d)).catch(() => setSchedules([]))
+    }
+  }, [dateFilter])
+
+  // Sincroniza selectedDate com dateFilter (quando dateFilter for YYYY-MM-DD)
+  useEffect(() => {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateFilter)) {
+  // Parse date at midday to avoid timezone shift that can show previous day
+  const d = new Date(`${dateFilter}T12:00:00`)
+      setSelectedDate(d)
+    } else {
+      setSelectedDate(undefined)
+    }
+  }, [dateFilter])
+
+  useEffect(() => {
+    let filtered = schedules
+
+    // Filtrar por termo de busca (nome do serviço)
     if (searchTerm) {
       filtered = filtered.filter(
-        (apt) =>
-          apt.clientName.toLowerCase().includes(searchTerm.toLowerCase()) || apt.clientPhone.includes(searchTerm),
+        (sch) => sch.service.name.toLowerCase().includes(searchTerm.toLowerCase())
       )
     }
 
-    // Filtrar por status
+    // Filtrar por status (de agendamento)
     if (statusFilter !== "all") {
-      filtered = filtered.filter((apt) => apt.status === statusFilter)
+      filtered = filtered.filter((sch) =>
+        sch.appointments.some((apt) => apt.status.toLowerCase() === statusFilter)
+      )
     }
 
     // Filtrar por data
@@ -78,59 +182,29 @@ export default function AppointmentsPage() {
 
       switch (dateFilter) {
         case "today":
-          filtered = filtered.filter((apt) => apt.date === todayString)
+          filtered = filtered.filter((sch) => sch.date.slice(0, 10) === todayString)
           break
         case "upcoming":
-          filtered = filtered.filter((apt) => apt.date >= todayString)
+          filtered = filtered.filter((sch) => sch.date.slice(0, 10) >= todayString)
           break
         case "past":
-          filtered = filtered.filter((apt) => apt.date < todayString)
+          filtered = filtered.filter((sch) => sch.date.slice(0, 10) < todayString)
           break
       }
     }
 
     // Ordenar por data e horário
     filtered.sort((a, b) => {
-      const dateA = new Date(`${a.date}T${a.time}`)
-      const dateB = new Date(`${b.date}T${b.time}`)
+      const dateA = new Date(`${a.date}T${a.startTime}`)
+      const dateB = new Date(`${b.date}T${b.startTime}`)
       return dateB.getTime() - dateA.getTime()
     })
 
-    setFilteredAppointments(filtered)
-  }, [appointments, searchTerm, statusFilter, dateFilter])
-
-  const getServiceName = (serviceId: string) => {
-    const service = services.find((s) => s.id === serviceId)
-    return service?.name || "Serviço não encontrado"
-  }
-
-  const updateAppointmentStatus = (appointmentId: string, newStatus: "confirmed" | "cancelled") => {
-    const updatedAppointments = appointments.map((apt) =>
-      apt.id === appointmentId ? { ...apt, status: newStatus } : apt,
-    )
-
-    setAppointments(updatedAppointments)
-    localStorage.setItem("appointments", JSON.stringify(updatedAppointments))
-
-    toast({
-      title: "Status atualizado",
-      description: `Agendamento ${newStatus === "confirmed" ? "confirmado" : "cancelado"} com sucesso.`,
-    })
-  }
-
-  const deleteAppointment = (appointmentId: string) => {
-    const updatedAppointments = appointments.filter((apt) => apt.id !== appointmentId)
-    setAppointments(updatedAppointments)
-    localStorage.setItem("appointments", JSON.stringify(updatedAppointments))
-
-    toast({
-      title: "Agendamento removido",
-      description: "O agendamento foi removido com sucesso.",
-    })
-  }
+    setFilteredSchedules(filtered)
+  }, [schedules, searchTerm, statusFilter, dateFilter])
 
   const getStatusBadge = (status: string) => {
-    switch (status) {
+    switch (status.toLowerCase()) {
       case "confirmed":
         return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Confirmado</Badge>
       case "cancelled":
@@ -140,15 +214,19 @@ export default function AppointmentsPage() {
     }
   }
 
+  // Estatísticas baseadas nos schedules/appointments
   const getAppointmentStats = () => {
-    const total = appointments.length
-    const confirmed = appointments.filter((apt) => apt.status === "confirmed").length
-    const pending = appointments.filter((apt) => apt.status === "pending").length
-    const cancelled = appointments.filter((apt) => apt.status === "cancelled").length
-
+    let total = 0, confirmed = 0, pending = 0, cancelled = 0
+    schedules.forEach((sch) => {
+      sch.appointments.forEach((apt) => {
+        total++
+        if (apt.status.toLowerCase() === "confirmed") confirmed++
+        else if (apt.status.toLowerCase() === "pending") pending++
+        else if (apt.status.toLowerCase() === "cancelled") cancelled++
+      })
+    })
     return { total, confirmed, pending, cancelled }
   }
-
   const stats = getAppointmentStats()
 
   return (
@@ -164,10 +242,19 @@ export default function AppointmentsPage() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Total</p>
-                <p className="text-2xl font-bold">{stats.total}</p>
+                {loading ? (
+                  <div className="space-y-2">
+                    <div className="h-3 w-24 bg-gray-200 rounded animate-pulse" />
+                    <div className="h-8 w-24 bg-gray-200 rounded animate-pulse" />
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-sm font-medium text-muted-foreground">Total</p>
+                    <p className="text-2xl font-bold">{stats.total}</p>
+                  </>
+                )}
               </div>
-              <Calendar className="h-8 w-8 text-blue-600" />
+              <CalendarIcon className="h-8 w-8 text-blue-600" />
             </div>
           </CardContent>
         </Card>
@@ -175,8 +262,17 @@ export default function AppointmentsPage() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Confirmados</p>
-                <p className="text-2xl font-bold text-green-600">{stats.confirmed}</p>
+                {loading ? (
+                  <div className="space-y-2">
+                    <div className="h-3 w-28 bg-gray-200 rounded animate-pulse" />
+                    <div className="h-8 w-24 bg-gray-200 rounded animate-pulse" />
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-sm font-medium text-muted-foreground">Confirmados</p>
+                    <p className="text-2xl font-bold text-green-600">{stats.confirmed}</p>
+                  </>
+                )}
               </div>
               <CheckCircle className="h-8 w-8 text-green-600" />
             </div>
@@ -187,8 +283,17 @@ export default function AppointmentsPage() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Cancelados</p>
-                <p className="text-2xl font-bold text-red-600">{stats.cancelled}</p>
+                {loading ? (
+                  <div className="space-y-2">
+                    <div className="h-3 w-24 bg-gray-200 rounded animate-pulse" />
+                    <div className="h-8 w-24 bg-gray-200 rounded animate-pulse" />
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-sm font-medium text-muted-foreground">Cancelados</p>
+                    <p className="text-2xl font-bold text-red-600">{stats.cancelled}</p>
+                  </>
+                )}
               </div>
               <XCircle className="h-8 w-8 text-red-600" />
             </div>
@@ -202,7 +307,7 @@ export default function AppointmentsPage() {
           <CardTitle>Filtros</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="flex flex-wrap gap-4">
             <div className="space-y-2">
               <label className="text-sm font-medium">Buscar</label>
               <Input
@@ -219,7 +324,6 @@ export default function AppointmentsPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todos</SelectItem>
-                  <SelectItem value="pending">Pendentes</SelectItem>
                   <SelectItem value="confirmed">Confirmados</SelectItem>
                   <SelectItem value="cancelled">Cancelados</SelectItem>
                 </SelectContent>
@@ -227,17 +331,55 @@ export default function AppointmentsPage() {
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">Data</label>
-              <Select value={dateFilter} onValueChange={setDateFilter}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todas</SelectItem>
-                  <SelectItem value="today">Hoje</SelectItem>
-                  <SelectItem value="upcoming">Próximos</SelectItem>
-                  <SelectItem value="past">Passados</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="flex items-center gap-2">
+                <Popover>
+                  <div className="relative w-[200px]">
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        data-empty={!selectedDate}
+                        className="data-[empty=true]:text-muted-foreground w-full justify-start text-left font-normal text-sm pr-8"
+                      >
+                        <CalendarIcon className="mr-2" />
+                        {selectedDate ? format(selectedDate, 'dd/MM/yyyy', { locale: ptBR }) : <span>Selecionar data</span>}
+                      </Button>
+                    </PopoverTrigger>
+
+                    {selectedDate && (
+                      <button
+                        onClick={() => {
+                          setSelectedDate(undefined)
+                          setDateFilter('all')
+                        }}
+                        aria-label="Limpar data"
+                        className="absolute right-2 top-1/2 -translate-y-1/2 p-1"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    )}
+
+                    <PopoverContent className="w-auto p-0">
+                      <DatePicker
+                        mode="single"
+                        selected={selectedDate}
+                        onSelect={(date) => {
+                          if (!date) return
+                          // toggle: se clicar no mesmo dia, limpa o filtro
+                          const clicked = format(date, 'yyyy-MM-dd')
+                          if (selectedDate && format(selectedDate, 'yyyy-MM-dd') === clicked) {
+                            setSelectedDate(undefined)
+                            setDateFilter('all')
+                            return
+                          }
+
+                          setSelectedDate(date)
+                          setDateFilter(clicked)
+                        }}
+                      />
+                    </PopoverContent>
+                  </div>
+                </Popover>
+              </div>
             </div>
           </div>
         </CardContent>
@@ -245,62 +387,94 @@ export default function AppointmentsPage() {
 
       {/* Lista de agendamentos */}
       <div className="space-y-4">
-        {filteredAppointments.length === 0 ? (
+        {loading ? (
+          <div className="grid grid-cols-1 gap-4">
+            {[0,1,2,3,4,5].map((i) => (
+              <Card key={i}>
+                <CardContent className="p-6 animate-pulse">
+                  <div className="h-4 bg-gray-200 rounded w-1/3 mb-3" />
+                  <div className="h-2 bg-gray-200 rounded w-1/2" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : filteredSchedules.length === 0 ? (
           <Card>
             <CardContent className="py-8 text-center">
               <p className="text-muted-foreground">Nenhum agendamento encontrado.</p>
             </CardContent>
           </Card>
         ) : (
-          filteredAppointments.map((appointment) => (
-            <Card key={appointment.id}>
+          filteredSchedules.map((schedule) => (
+            <Card key={schedule.id}>
               <CardContent className="p-6">
-                <div className="flex justify-between items-start">
+                <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4">
                   <div className="flex-1 space-y-3">
                     <div className="flex items-center gap-4">
-                      <h3 className="font-semibold text-lg">{getServiceName(appointment.serviceId)}</h3>
-                      {getStatusBadge(appointment.status)}
+                      <h3 className="font-semibold text-lg">{schedule.service.name}</h3>
+                      <span className="text-xs text-muted-foreground">Horário: {schedule.startTime} - {schedule.endTime}</span>
                     </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-muted-foreground">
-                      <div className="flex items-center gap-2">
-                        <User className="h-4 w-4" />
-                        <span>{appointment.clientName}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Phone className="h-4 w-4" />
-                        <span>{appointment.clientPhone}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4" />
-                        <span>{format(new Date(appointment.date), "dd/MM/yyyy", { locale: ptBR })}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Clock className="h-4 w-4" />
-                        <span>{appointment.time}</span>
-                      </div>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <CalendarIcon className="h-4 w-4" />
+                      <span>{format(new Date(`${schedule.date.slice(0,10)}T12:00:00`), "dd/MM/yyyy", { locale: ptBR })}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <span>Disponível: {schedule.isAvailable ? 'Sim' : 'Não'}</span>
                     </div>
                   </div>
-
-                  <div className="flex gap-2 ml-4">
-                    {appointment.status !== "cancelled" && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => updateAppointmentStatus(appointment.id, "cancelled")}
-                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                      >
-                        Cancelar
-                      </Button>
-                    )}
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => deleteAppointment(appointment.id)}
-                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                  <div className="flex-1">
+                    <div className="space-y-2">
+                      {schedule.appointments.length === 0 ? (
+                        <div className="text-muted-foreground text-sm">Nenhum agendamento para este horário.</div>
+                      ) : (
+                        schedule.appointments.map((apt) => (
+                          <div key={apt.id} className="gap-4 rounded p-2 mb-2 flex flex-col md:items-end md:justify-between">
+                            <div className="flex items-center gap-2">
+                              <User className="h-4 w-4" />
+                              <div>
+                                <div className="font-medium">{apt.user?.name || `ID: ${apt.userId}`}</div>
+                                {apt.user?.email && <div className="text-xs text-muted-foreground">{apt.user.email}</div>}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {getStatusBadge(apt.status)}
+                              {apt.status.toLowerCase() !== 'cancelled' && (
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <Button size="sm" variant="ghost" className="ml-2" disabled={cancelingIds.includes(apt.id)}>
+                                      <Trash2 className="h-4 w-4 text-red-600" />
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogTitle>Confirmar cancelamento</AlertDialogTitle>
+                                    <AlertDialogDescription>Tem certeza que deseja cancelar este agendamento? Esta ação não pode ser desfeita.</AlertDialogDescription>
+                                    <div className="mt-4 flex justify-end gap-2">
+                                      <AlertDialogCancel>Fechar</AlertDialogCancel>
+                                      <AlertDialogAction onClick={() => cancelAppointment(apt.id)}>Confirmar</AlertDialogAction>
+                                    </div>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                              <span>
+                                Criado em: {
+                                  new Intl.DateTimeFormat('pt-BR', {
+                                    day: '2-digit',
+                                    month: '2-digit',
+                                    year: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                    hour12: false,
+                                    timeZone: 'America/Sao_Paulo',
+                                  }).format(new Date(apt.createdAt))
+                                }
+                              </span>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
                   </div>
                 </div>
               </CardContent>

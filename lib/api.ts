@@ -1,11 +1,13 @@
 export const BASE_URL = 'https://tcc-backend-vvd4.onrender.com'
 
-export async function getSchedules(token?: string) {
+export async function getSchedules(params: Record<string, string> = {}, token?: string) {
+  const qs = new URLSearchParams(params).toString()
+  const url = `${BASE_URL}/schedules${qs ? `?${qs}` : ''}`
   const headers: Record<string, string> = { 'Content-Type': 'application/json' }
   if (token) {
     headers['Authorization'] = `Bearer ${token}`
   }
-  const res = await fetch(`${BASE_URL}/schedules`, {
+  const res = await fetch(url, {
     method: 'GET',
     headers,
   })
@@ -142,6 +144,25 @@ console.log(res);
 
   if (!res.ok) {
     const message = data?.message || data?.error || 'Create appointment failed'
+    throw new Error(message)
+  }
+
+  return data
+}
+
+export async function cancelAppointment(id: string, token?: string) {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  if (token) headers['Authorization'] = `Bearer ${token}`
+
+  const res = await fetch(`${BASE_URL}/appointments/${id}/cancel`, {
+    method: 'PATCH',
+    headers,
+  })
+
+  const data = await res.json()
+
+  if (!res.ok) {
+    const message = data?.message || data?.error || 'Cancel appointment failed'
     throw new Error(message)
   }
 
