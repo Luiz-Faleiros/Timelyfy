@@ -313,7 +313,7 @@ export default function AppointmentsPage() {
               <label className="text-xs md:text-sm font-medium">Buscar</label>
               <Input
                 className="w-full"
-                placeholder="Nome ou telefone..."
+                placeholder="Nome do serviço"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />

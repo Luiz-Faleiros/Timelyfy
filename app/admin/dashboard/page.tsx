@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+// Select foi removido: usaremos input type="time" para duração e intervalo
 import { Checkbox } from "@/components/ui/checkbox"
 import { useToast } from "@/hooks/use-toast"
 import { Trash2, Plus, Eye, CalendarDays, Clock, User } from "lucide-react"
@@ -80,6 +80,23 @@ export default function AdminDashboard() {
       .filter((v, i, a) => a.indexOf(v) === i)
 
     return normalized
+  }
+
+  // Helpers para converter minutos <-> time string (HH:MM)
+  const minutesToTimeString = (minutes: number) => {
+    const hrs = Math.floor(minutes / 60)
+    const mins = minutes % 60
+    const pad = (n: number) => String(n).padStart(2, '0')
+    return `${pad(hrs)}:${pad(mins)}`
+  }
+
+  const timeStringToMinutes = (time: string) => {
+    if (!time) return 0
+    const parts = time.split(':')
+    const h = Number(parts[0] || 0)
+    const m = Number(parts[1] || 0)
+    if (Number.isNaN(h) || Number.isNaN(m)) return 0
+    return h * 60 + m
   }
 
   const handleCreateService = async () => {
@@ -177,6 +194,17 @@ export default function AdminDashboard() {
     })
     setEditingServiceId(id)
     setIsCreating(true)
+    // Levar a tela para o topo ao entrar em modo de edição e focar o primeiro campo
+    try {
+      // usar timeout para garantir que o formulário já foi montado
+      setTimeout(() => {
+        if (typeof window !== 'undefined') {
+          window.scrollTo({ top: 0, behavior: 'smooth' })
+        }
+        const firstInput = document.getElementById('serviceName') as HTMLInputElement | null
+        firstInput?.focus()
+      }, 0)
+    } catch {}
   }
 
   const handleUpdateService = () => {
@@ -386,7 +414,7 @@ export default function AdminDashboard() {
             <CardDescription>Configure os detalhes do seu serviço</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="serviceName">Nome do Serviço *</Label>
                 <Input
@@ -407,23 +435,13 @@ export default function AdminDashboard() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="duration">Duração (minutos)</Label>
-                <Select
-                  value={newService.duration.toString()}
-                  onValueChange={(value) => setNewService({ ...newService, duration: Number.parseInt(value) })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="15">15 minutos</SelectItem>
-                    <SelectItem value="30">30 minutos</SelectItem>
-                    <SelectItem value="45">45 minutos</SelectItem>
-                    <SelectItem value="60">1 hora</SelectItem>
-                    <SelectItem value="90">1h 30min</SelectItem>
-                    <SelectItem value="120">2 horas</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="interval">Intervalo</Label>
+                <Input
+                  id="interval"
+                  type="time"
+                  value={minutesToTimeString(newService.interval)}
+                  onChange={(e) => setNewService({ ...newService, interval: timeStringToMinutes(e.target.value) })}
+                />
               </div>
             </div>
 
@@ -459,21 +477,13 @@ export default function AdminDashboard() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="interval">Intervalo (minutos)</Label>
-                <Select
-                  value={newService.interval.toString()}
-                  onValueChange={(value) => setNewService({ ...newService, interval: Number.parseInt(value) })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="15">15 minutos</SelectItem>
-                    <SelectItem value="30">30 minutos</SelectItem>
-                    <SelectItem value="45">45 minutos</SelectItem>
-                    <SelectItem value="60">1 hora</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="duration">Duração</Label>
+                <Input
+                  id="duration"
+                  type="time"
+                  value={minutesToTimeString(newService.duration)}
+                  onChange={(e) => setNewService({ ...newService, duration: timeStringToMinutes(e.target.value) })}
+                />
               </div>
             </div>
 
