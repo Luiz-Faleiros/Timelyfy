@@ -552,8 +552,8 @@ export default function AdminDashboard() {
           <div className="grid gap-4">
             {services.map((service) => (
               <Card key={service.id}>
-                <CardContent className="p-6">
-                  <div className="flex justify-between items-start">
+                <CardContent className="p-4 md:p-6">
+                  <div className="flex flex-col md:flex-row md:justify-between md:items-start">
                     <div className="flex-1">
                       <h3 className="font-semibold text-lg text-gray-900">{service.name}</h3>
                       <div className="mt-2 space-y-1 text-sm text-muted-foreground">
@@ -571,12 +571,12 @@ export default function AdminDashboard() {
                         <p className="text-sm text-blue-700 break-all">{getPublicLink(service.name)}</p>
                       </div>
                     </div>
-                    <div className="flex gap-2 ml-4">
+          <div className="flex gap-2 mt-4 md:mt-0 ml-0 md:ml-4 flex-wrap">
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={() => window.open(getPublicLink(service.name), "_blank")}
-                        className="flex items-center gap-1"
+            className="flex items-center gap-1 w-full md:w-auto"
                       >
                         <Eye className="h-4 w-4" />
                         Ver
@@ -585,7 +585,7 @@ export default function AdminDashboard() {
                         variant="outline"
                         size="sm"
                         onClick={() => handleEditService(service.id)}
-                        className="flex items-center gap-1"
+            className="flex items-center gap-1 w-full md:w-auto"
                       >
                         Editar
                       </Button>
@@ -593,7 +593,7 @@ export default function AdminDashboard() {
                         variant="outline"
                         size="sm"
                         onClick={() => handleDeleteService(service.id)}
-                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+            className="text-red-600 hover:text-red-700 hover:bg-red-50 w-full md:w-auto"
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>

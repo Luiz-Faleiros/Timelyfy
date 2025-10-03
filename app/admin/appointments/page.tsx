@@ -301,26 +301,28 @@ export default function AppointmentsPage() {
         </Card>
       </div>
 
-      {/* Filtros */}
+      {/* Filtros - responsivo */}
       <Card className="mb-6">
-        <CardHeader>
-          <CardTitle>Filtros</CardTitle>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base md:text-lg">Filtros</CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap gap-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Buscar</label>
+        <CardContent className="pt-0">
+          {/* Grid em mobile empilha, em md distribui */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="space-y-2 w-full">
+              <label className="text-xs md:text-sm font-medium">Buscar</label>
               <Input
+                className="w-full"
                 placeholder="Nome ou telefone..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Status</label>
+            <div className="space-y-2 w-full">
+              <label className="text-xs md:text-sm font-medium">Status</label>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger>
-                  <SelectValue />
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Selecione" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todos</SelectItem>
@@ -329,22 +331,21 @@ export default function AppointmentsPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Data</label>
+            <div className="space-y-2 w-full sm:col-span-2 lg:col-span-1">
+              <label className="text-xs md:text-sm font-medium">Data</label>
               <div className="flex items-center gap-2">
                 <Popover>
-                  <div className="relative w-[200px]">
+                  <div className="relative w-full">
                     <PopoverTrigger asChild>
                       <Button
                         variant="outline"
                         data-empty={!selectedDate}
-                        className="data-[empty=true]:text-muted-foreground w-full justify-start text-left font-normal text-sm pr-8"
+                        className="data-[empty=true]:text-muted-foreground w-full justify-start text-left font-normal text-xs md:text-sm pr-8"
                       >
-                        <CalendarIcon className="mr-2" />
+                        <CalendarIcon className="mr-2 h-4 w-4" />
                         {selectedDate ? format(selectedDate, 'dd/MM/yyyy', { locale: ptBR }) : <span>Selecionar data</span>}
                       </Button>
                     </PopoverTrigger>
-
                     {selectedDate && (
                       <button
                         onClick={() => {
@@ -352,26 +353,23 @@ export default function AppointmentsPage() {
                           setDateFilter('all')
                         }}
                         aria-label="Limpar data"
-                        className="absolute right-2 top-1/2 -translate-y-1/2 p-1"
+                        className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-muted"
                       >
                         <X className="h-4 w-4" />
                       </button>
                     )}
-
-                    <PopoverContent className="w-auto p-0">
+                    <PopoverContent className="w-auto p-0" align="start">
                       <DatePicker
                         mode="single"
                         selected={selectedDate}
                         onSelect={(date) => {
                           if (!date) return
-                          // toggle: se clicar no mesmo dia, limpa o filtro
                           const clicked = format(date, 'yyyy-MM-dd')
                           if (selectedDate && format(selectedDate, 'yyyy-MM-dd') === clicked) {
                             setSelectedDate(undefined)
                             setDateFilter('all')
                             return
                           }
-
                           setSelectedDate(date)
                           setDateFilter(clicked)
                         }}
@@ -407,11 +405,12 @@ export default function AppointmentsPage() {
         ) : (
           filteredSchedules.map((schedule) => (
             <Card key={schedule.id}>
-              <CardContent className="p-6">
+              <CardContent className="p-5 md:p-6">
                 <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4">
-                  <div className="flex-1 space-y-3">
-                    <div className="flex items-center gap-4">
-                      <h3 className="font-semibold text-lg">{schedule.service.name}</h3>
+                  {/* Coluna info do serviço (borda só no mobile) */}
+                  <div className="flex-1 space-y-3 pb-4 border-b md:border-none md:pb-0">
+                    <div className="flex flex-col gap-1">
+                      <h3 className="font-semibold text-lg leading-tight">{schedule.service.name}</h3>
                       <span className="text-xs text-muted-foreground">Horário: {schedule.startTime} - {schedule.endTime}</span>
                     </div>
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -419,29 +418,36 @@ export default function AppointmentsPage() {
                       <span>{format(new Date(`${schedule.date.slice(0,10)}T12:00:00`), "dd/MM/yyyy", { locale: ptBR })}</span>
                     </div>
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <span>Disponível: {schedule.isAvailable ? 'Sim' : 'Não'}</span>
+                      <span className="font-medium">Disponível:</span>
+                      <span className={schedule.isAvailable ? 'text-green-600' : 'text-red-600'}>
+                        {schedule.isAvailable ? 'Sim' : 'Não'}
+                      </span>
                     </div>
                   </div>
-                  <div className="flex-1">
-                    <div className="space-y-2">
-                      {schedule.appointments.length === 0 ? (
-                        <div className="text-muted-foreground text-sm">Nenhum agendamento para este horário.</div>
-                      ) : (
-                        schedule.appointments.map((apt) => (
-                          <div key={apt.id} className="gap-4 rounded p-2 mb-2 flex flex-col md:items-end md:justify-between">
-                            <div className="flex items-center gap-2">
-                              <User className="h-4 w-4" />
-                              <div>
-                                <div className="font-medium">{apt.user?.name || `ID: ${apt.userId}`}</div>
-                                {apt.user?.email && <div className="text-xs text-muted-foreground">{apt.user.email}</div>}
+                  {/* Coluna agendamentos (layout original no desktop) */}
+                  <div className="flex-1 space-y-2">
+                    {schedule.appointments.length === 0 ? (
+                      <div className="text-muted-foreground text-xs md:text-sm">Nenhum agendamento para este horário.</div>
+                    ) : (
+                      schedule.appointments.map((apt) => (
+                        <div
+                          key={apt.id}
+                          className="rounded border md:border-0 p-3 md:p-0 flex flex-col gap-2 bg-muted/30 md:bg-transparent"
+                        >
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <User className="h-4 w-4 shrink-0" />
+                              <div className="min-w-0">
+                                <div className="font-medium text-sm truncate max-w-[180px] md:max-w-[220px]">{apt.user?.name || `ID: ${apt.userId}`}</div>
+                                {apt.user?.email && <div className="text-[11px] text-muted-foreground truncate max-w-[180px] md:max-w-[220px]">{apt.user.email}</div>}
                               </div>
                             </div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 self-start">
                               {getStatusBadge(apt.status)}
                               {apt.status.toLowerCase() !== 'cancelled' && (
                                 <AlertDialog>
                                   <AlertDialogTrigger asChild>
-                                    <Button size="sm" variant="ghost" className="ml-2" disabled={cancelingIds.includes(apt.id)}>
+                                    <Button size="icon" variant="ghost" className="h-7 w-7" disabled={cancelingIds.includes(apt.id)}>
                                       <Trash2 className="h-4 w-4 text-red-600" />
                                     </Button>
                                   </AlertDialogTrigger>
@@ -456,25 +462,25 @@ export default function AppointmentsPage() {
                                 </AlertDialog>
                               )}
                             </div>
-                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                              <span>
-                                Criado em: {
-                                  new Intl.DateTimeFormat('pt-BR', {
-                                    day: '2-digit',
-                                    month: '2-digit',
-                                    year: 'numeric',
-                                    hour: '2-digit',
-                                    minute: '2-digit',
-                                    hour12: false,
-                                    timeZone: 'America/Sao_Paulo',
-                                  }).format(new Date(apt.createdAt))
-                                }
-                              </span>
-                            </div>
                           </div>
-                        ))
-                      )}
-                    </div>
+                          <div className="flex items-center gap-2 text-[11px] text-muted-foreground mt-1">
+                            <span>
+                              Criado: {
+                                new Intl.DateTimeFormat('pt-BR', {
+                                  day: '2-digit',
+                                  month: '2-digit',
+                                  year: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                  hour12: false,
+                                  timeZone: 'America/Sao_Paulo',
+                                }).format(new Date(apt.createdAt))
+                              }
+                            </span>
+                          </div>
+                        </div>
+                      ))
+                    )}
                   </div>
                 </div>
               </CardContent>

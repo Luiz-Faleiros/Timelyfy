@@ -36,6 +36,23 @@ export async function login(email: string, password: string) {
   return data
 }
 
+export async function register(payload: any) {
+  const res = await fetch(`${BASE_URL}/auth/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+
+  const data = await res.json()
+
+  if (!res.ok) {
+    const message = data?.message || data?.error || 'Register failed'
+    throw new Error(message)
+  }
+
+  return data
+}
+
 export async function createService(payload: any, token?: string) {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' }
   if (token) {
@@ -138,7 +155,6 @@ export async function createPublicAppointment(payload: any) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   })
-console.log(res);
 
   const data = await res.json()
 

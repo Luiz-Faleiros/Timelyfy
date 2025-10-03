@@ -52,10 +52,9 @@ export default function RegisterPage() {
         name,
       }
 
-  // always ADMIN
-  payload.role = "ADMIN"
-  payload.adminInviteCode = ADMIN_INVITE_CODE
-console.log(payload);
+    // always ADMIN
+    payload.role = "ADMIN"
+    payload.adminInviteCode = ADMIN_INVITE_CODE
 
       const res = await fetch("/api/auth/register", {
         method: "POST",
@@ -71,8 +70,14 @@ console.log(payload);
         return
       }
 
-      toast({ title: "Registro criado", description: "Você pode agora fazer login." })
-      setStage("done")
+  toast({ title: "Registro criado", description: "Registro realizado com sucesso." })
+  // voltar para o estado inicial (gate) e limpar campos
+  setName("")
+  setEmail("")
+  setPassword("")
+  setCode("")
+  setError("")
+  setStage("gate")
       // optional: redirect to login
       // router.push('/login')
     } catch (err: any) {

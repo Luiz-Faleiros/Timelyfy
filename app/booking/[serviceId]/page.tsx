@@ -7,8 +7,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Calendar } from "@/components/ui/calendar"
 import { useToast } from "@/hooks/use-toast"
-import { CalendarDays, Clock, User, Mail } from "lucide-react"
-import { format, startOfDay, startOfMonth, endOfMonth } from "date-fns"
+import { CalendarDays, Clock, User, Mail, ArrowLeft } from "lucide-react"
+import { format, startOfDay, startOfMonth, endOfMonth, addDays } from "date-fns"
 import { ptBR } from "date-fns/locale"
 import { Skeleton } from "@/components/ui/skeleton"
 
@@ -51,6 +51,8 @@ export default function BookingPage({ params }: BookingPageProps) {
   const [fullyBookedDates, setFullyBookedDates] = useState<Record<string, boolean>>({})
   const [bookedTimesForDate, setBookedTimesForDate] = useState<Record<string, string[]>>({})
   const [schedulesLoading, setSchedulesLoading] = useState(false)
+  const [isMobile, setIsMobile] = useState<boolean>(false)
+  const [mobileStep, setMobileStep] = useState<number>(1) // 1: calendar, 2: times, 3: client
 
   const weekDayMap = {
     monday: 1,
@@ -133,6 +135,14 @@ export default function BookingPage({ params }: BookingPageProps) {
   // Carregar agendamentos existentes (não usa mais localStorage)
   // mantém o estado de agendamentos apenas em memória
   }, [params.serviceId])
+
+  // Detect mobile viewport to enable step flow
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth <= 768)
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
 
   // Removed monthly range fetch: schedules will be fetched only when user selects a date
 
@@ -434,6 +444,7 @@ export default function BookingPage({ params }: BookingPageProps) {
       setClientEmail('')
       setAvailableTimes([])
       setVisibleMonth(null)
+  setMobileStep(1)
     } catch (err: any) {
       console.error('Erro ao criar agendamento', err)
       toast({
@@ -464,7 +475,7 @@ export default function BookingPage({ params }: BookingPageProps) {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* Skeleton do calendário */}
             <div>
-              <Skeleton className="h-80 w-full rounded-md" />
+              <Skeleton className="h-96 w-full rounded-md" />
             </div>
             {/* Skeleton dos horários disponíveis e formulário */}
             <div className="space-y-6">
@@ -492,66 +503,243 @@ export default function BookingPage({ params }: BookingPageProps) {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white">
-      <div className="max-w-4xl mx-auto px-4 py-8">
+      <div className="max-w-4xl mx-auto px-4 py-4 md:py-8">
         {/* Header */}
-        <div className="text-center mb-8">
+        <div className="text-center mb-4 md:mb-8">
           <h1 className="text-3xl font-bold text-blue-900 mb-2">Agendar Horário</h1>
           <p className="text-muted-foreground">Escolha o melhor horário para você</p>
         </div>
 
         {/* Informações do serviço */}
-        <Card className="mb-8">
+        <Card className="mb-4 md:mb-8">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-blue-900">
+            <CardTitle className="flex flex-wrap items-center gap-2 text-blue-900">
               <CalendarDays className="h-5 w-5" />
-              {service.name}
+              <span>{service.name} - {service.startTime} às {service.endTime}</span>
             </CardTitle>
-            <CardDescription className="flex items-center gap-4 text-base">
-              <span className="flex items-center gap-1">
-                <Clock className="h-4 w-4" />
-                {service.duration} minutos
-              </span>
-              <span>
-                {service.startTime} às {service.endTime}
-              </span>
-            </CardDescription>
           </CardHeader>
         </Card>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Seleção de data */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Escolha a Data</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Calendar
-                mode="single"
-                selected={selectedDate}
-                onSelect={(d) => {
-                  setSelectedDate(d as Date)
-                  setAvailableTimes([])
-                  setSelectedTime('')
-                }}
-                disabled={(date) => !isDateAvailable(date)}
-                locale={ptBR}
-                className="rounded-md border"
-                onMonthChange={(d) => setVisibleMonth(d)}
-              />
-            </CardContent>
-          </Card>
-
-          {/* Seleção de horário e dados do cliente */}
+        {isMobile ? (
           <div className="space-y-6">
-            {/* Horários disponíveis */}
-            {selectedDate && (
+            {/* Mobile stepper: show only the current step */}
+            {mobileStep === 1 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Escolha a Data</CardTitle>
+                </CardHeader>
+                <CardContent className="flex flex-col items-center">
+                  <Calendar
+                    mode="single"
+                    selected={selectedDate}
+                    onSelect={(d) => {
+                      setSelectedDate(d as Date)
+                      setAvailableTimes([])
+                      setSelectedTime('')
+                      setMobileStep(2)
+                    }}
+                    disabled={(date) => !isDateAvailable(date)}
+                    locale={ptBR}
+                    className="rounded-md border"
+                    onMonthChange={(d) => setVisibleMonth(d)}
+                  />
+                  <div className="w-full mt-6">
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Informações</CardTitle>
+                        <CardDescription>{!selectedDate ? 'Dicas para escolher uma data' : 'Detalhes da data selecionada'}</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        {!selectedDate ? (
+                          <div className="space-y-2">
+                            <p className="text-sm text-muted-foreground">Selecione uma data no calendário para ver os horários disponíveis.</p>
+                          </div>
+                        ) : (
+                          <div className="space-y-2">
+                            <p className="text-sm">{format(selectedDate, "EEEE, dd 'de' MMMM", { locale: ptBR })}</p>
+                            <p className="text-xs text-muted-foreground flex items-center gap-1"><Clock className="h-3 w-3" /> Duração: {service.duration} minutos</p>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {mobileStep === 2 && (
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <Button variant="ghost" onClick={() => setMobileStep(1)} className="flex items-center gap-2">
+                    <ArrowLeft className="h-4 w-4" />
+                    Voltar
+                  </Button>
+                  <div />
+                </div>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Horários Disponíveis</CardTitle>
+                    <CardDescription>
+                      {selectedDate ? format(selectedDate, "EEEE, dd 'de' MMMM", { locale: ptBR }) : 'Selecione uma data'}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {!selectedDate ? (
+                      <p className="text-muted-foreground text-center py-8">Selecione uma data para ver os horários disponíveis.</p>
+                    ) : schedulesLoading ? (
+                      <div className="grid grid-cols-3 gap-2">
+                        <Skeleton className="h-10" />
+                        <Skeleton className="h-10" />
+                        <Skeleton className="h-10" />
+                      </div>
+                    ) : availableTimes.length === 0 ? (
+                      <p className="text-muted-foreground text-center py-4">Nenhum horário disponível para esta data.</p>
+                    ) : (
+                      <div className="grid grid-cols-3 gap-2">
+                        {availableTimes.map((time) => (
+                          <Button
+                            key={time}
+                            variant={selectedTime === time ? "default" : "outline"}
+                            className={
+                              selectedTime === time
+                                ? "bg-blue-600 hover:bg-blue-700"
+                                : "hover:bg-blue-50 hover:border-blue-300"
+                            }
+                            onClick={() => {
+                              setSelectedTime(time)
+                              setMobileStep(3)
+                            }}
+                          >
+                            {time}
+                          </Button>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            {mobileStep === 3 && (
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <Button variant="ghost" onClick={() => setMobileStep(2)} className="flex items-center gap-2">
+                    <ArrowLeft className="h-4 w-4" />
+                    Voltar
+                  </Button>
+                  <div />
+                </div>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Seus Dados</CardTitle>
+                    <CardDescription>Preencha suas informações para confirmar o agendamento</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="clientName" className="flex items-center gap-2">
+                        <User className="h-4 w-4" />
+                        Nome Completo *
+                      </Label>
+                      <Input
+                        id="clientName"
+                        placeholder="Digite seu nome completo"
+                        value={clientName}
+                        onChange={(e) => setClientName(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="clientEmail" className="flex items-center gap-2">
+                        <Mail className="h-4 w-4" />
+                        Email *
+                      </Label>
+                      <Input
+                        id="clientEmail"
+                        placeholder="Digite seu email"
+                        value={clientEmail}
+                        onChange={(e) => setClientEmail(e.target.value)}
+                      />
+                    </div>
+
+                    <div className="pt-4">
+                      <Button
+                        onClick={handleBooking}
+                        disabled={isLoading || !selectedDate || !selectedTime}
+                        className={
+                          (isLoading || !selectedDate || !selectedTime)
+                            ? 'w-full bg-gray-300 text-gray-700 cursor-not-allowed'
+                            : 'w-full bg-blue-600 hover:bg-blue-700'
+                        }
+                      >
+                        {isLoading ? 'Confirmando...' : 'Confirmar Agendamento'}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Seleção de data */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Escolha a Data</CardTitle>
+              </CardHeader>
+              <CardContent className="flex flex-col items-center">
+                <Calendar
+                  mode="single"
+                  selected={selectedDate}
+                  onSelect={(d) => {
+                    setSelectedDate(d as Date)
+                    setAvailableTimes([])
+                    setSelectedTime('')
+                    if (isMobile) setMobileStep(2)
+                  }}
+                  disabled={(date) => !isDateAvailable(date)}
+                  locale={ptBR}
+                  className="rounded-md border"
+                  onMonthChange={(d) => setVisibleMonth(d)}
+                />
+                {/* Informação extra para evitar espaço em branco abaixo do calendário */}
+                <div className="w-full mt-6">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Informações</CardTitle>
+                      <CardDescription>{!selectedDate ? 'Dicas para escolher uma data' : 'Detalhes da data selecionada'}</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      {!selectedDate ? (
+                        <div className="space-y-2">
+                          <p className="text-sm text-muted-foreground">Selecione uma data no calendário para ver os horários disponíveis.</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          <p className="text-sm">{format(selectedDate, "EEEE, dd 'de' MMMM", { locale: ptBR })}</p>
+                          <p className="text-xs text-muted-foreground flex items-center gap-1"><Clock className="h-3 w-3" /> Duração: {service.duration} minutos</p>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Seleção de horário e dados do cliente */}
+            <div className="space-y-6">
+              {/* Horários disponíveis (mostrar sempre; instruir para selecionar data quando não houver seleção) */}
               <Card>
                 <CardHeader>
                   <CardTitle>Horários Disponíveis</CardTitle>
-                  <CardDescription>{format(selectedDate, "EEEE, dd 'de' MMMM", { locale: ptBR })}</CardDescription>
+                  <CardDescription>
+                    {selectedDate
+                      ? format(selectedDate, "EEEE, dd 'de' MMMM", { locale: ptBR })
+                      : 'Selecione uma data'}
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  {schedulesLoading ? (
+                  {!selectedDate ? (
+                    <p className="text-muted-foreground text-center py-8">Selecione uma data para ver os horários disponíveis.</p>
+                  ) : schedulesLoading ? (
                     <div className="grid grid-cols-3 gap-2">
                       <Skeleton className="h-10" />
                       <Skeleton className="h-10" />
@@ -570,7 +758,10 @@ export default function BookingPage({ params }: BookingPageProps) {
                               ? "bg-blue-600 hover:bg-blue-700"
                               : "hover:bg-blue-50 hover:border-blue-300"
                           }
-                          onClick={() => setSelectedTime(time)}
+                          onClick={() => {
+                            setSelectedTime(time)
+                            if (isMobile) setMobileStep(3)
+                          }}
                         >
                           {time}
                         </Button>
@@ -579,10 +770,8 @@ export default function BookingPage({ params }: BookingPageProps) {
                   )}
                 </CardContent>
               </Card>
-            )}
 
-            {/* Dados do cliente */}
-            {selectedTime && (
+              {/* Dados do cliente (mostrar sempre; botão habilita apenas com data+horário) */}
               <Card>
                 <CardHeader>
                   <CardTitle>Seus Dados</CardTitle>
@@ -617,17 +806,21 @@ export default function BookingPage({ params }: BookingPageProps) {
                   <div className="pt-4">
                     <Button
                       onClick={handleBooking}
-                      disabled={isLoading}
-                      className="w-full bg-blue-600 hover:bg-blue-700"
+                      disabled={isLoading || !selectedDate || !selectedTime}
+                      className={
+                        (isLoading || !selectedDate || !selectedTime)
+                          ? 'w-full bg-gray-300 text-gray-700 cursor-not-allowed'
+                          : 'w-full bg-blue-600 hover:bg-blue-700'
+                      }
                     >
-                      {isLoading ? "Confirmando..." : "Confirmar Agendamento"}
+                      {isLoading ? 'Confirmando...' : 'Confirmar Agendamento'}
                     </Button>
                   </div>
                 </CardContent>
               </Card>
-            )}
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   )

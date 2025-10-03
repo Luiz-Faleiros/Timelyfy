@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { register as externalRegister } from '@/lib/api'
 
 type Body = {
   email?: string
@@ -18,8 +19,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: 'Missing fields' }, { status: 400 })
     }
 
-    // If role is ADMIN, require server-side invite code match
-    const serverInvite = process.env.ADMIN_INVITE_CODE
+  // If role is ADMIN, require server-side invite code match
+  const serverInvite = process.env.NEXT_PUBLIC_ADMIN_INVITE_CODE
 
     if (role === 'ADMIN') {
       if (!serverInvite) {
@@ -31,17 +32,14 @@ export async function POST(req: Request) {
       }
     }
 
-    // Aqui você integraria com seu sistema de usuários / banco de dados.
-    // Para demonstração, retornamos sucesso sem persistir.
-
-    const created = {
-      id: Math.random().toString(36).slice(2, 9),
-      email,
-      name,
-      role,
+    // Forward the registration to the external API defined in lib/api.register
+    try {
+      const data = await externalRegister({ email, password, name, role, adminInviteCode })
+      return NextResponse.json(data, { status: 201 })
+    } catch (err: any) {
+      // externalRegister throws with a message; forward it
+      return NextResponse.json({ message: err?.message || 'External register failed' }, { status: 502 })
     }
-
-    return NextResponse.json({ message: 'Created', user: created }, { status: 201 })
   } catch (err: any) {
     return NextResponse.json({ message: err?.message ?? 'Invalid JSON' }, { status: 400 })
   }
