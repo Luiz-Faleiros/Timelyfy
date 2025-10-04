@@ -13,9 +13,21 @@ export default function HomePage() {
       <header className="bg-white shadow-sm border-b border-blue-100">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <h1 className="text-2xl font-bold text-blue-900">Timelyfy</h1>
-          <Button onClick={() => router.push("/login")} className="bg-blue-600 hover:bg-blue-700">
-            Área do Prestador
-          </Button>
+          <div className="flex items-center gap-3">
+            <Button
+              onClick={() => router.push("/login")}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              Área do Prestador
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => router.push("/register")}
+              className="border-blue-600 text-blue-700 hover:bg-blue-50"
+            >
+              Registrar
+            </Button>
+          </div>
         </div>
       </header>
 
