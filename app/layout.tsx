@@ -8,9 +8,8 @@ import { Toaster } from "@/components/ui/toaster"
 import { Suspense } from "react"
 
 export const metadata: Metadata = {
-  title: "v0 App",
-  description: "Created with v0",
-  generator: "v0.app",
+  title: "App agendamento",
+  description: "Plataforma de agendamento profissional simples e eficiente",
 }
 
 export default function RootLayout({
